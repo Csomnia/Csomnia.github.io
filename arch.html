@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>arch</title>
-<!-- 2017-03-02 Thu 11:39 -->
+<!-- 2017-03-02 Thu 17:07 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <style type="text/css">
@@ -165,8 +165,10 @@ for the JavaScript code in this tag.
 <li><a href="#sec-18-3">18.3. 显示驱动</a></li>
 <li><a href="#sec-18-4">18.4. 桌面环境</a></li>
 <li><a href="#sec-18-5">18.5. 软件</a></li>
-<li><a href="#sec-18-6">18.6. 配置键盘映射</a></li>
-<li><a href="#sec-18-7">18.7. 安装aur hleper</a></li>
+<li><a href="#sec-18-6">18.6. 安装fcitx</a></li>
+<li><a href="#sec-18-7">18.7. 配置键盘映射</a></li>
+<li><a href="#sec-18-8">18.8. 设置按键延时和重复速度</a></li>
+<li><a href="#sec-18-9">18.9. 安装aur hleper</a></li>
 </ul>
 </li>
 </ul>
@@ -533,8 +535,29 @@ or some optimizations (like the zero-copy rasterizer) won't do anything
 </div>
 
 <div id="outline-container-sec-18-6" class="outline-3">
-<h3 id="sec-18-6"><span class="section-number-3">18.6</span> 配置键盘映射</h3>
+<h3 id="sec-18-6"><span class="section-number-3">18.6</span> 安装fcitx</h3>
 <div class="outline-text-3" id="text-18-6">
+<div class="org-src-container">
+
+<pre class="src src-bash"># pacman -S fcitx fcitx-gtk3 fcitx-gtk2 fcitx-qt5 fcitx-configtool
+</pre>
+</div>
+
+<p>
+添加环境变量
+</p>
+<div class="org-src-container">
+
+<pre class="src src-bash">export GTK_IM_MODULE=fcitx                                                      
+export QT_IM_MODULE=fcitx                                                       
+export XMODIFIERS=@im=fcitx
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-sec-18-7" class="outline-3">
+<h3 id="sec-18-7"><span class="section-number-3">18.7</span> 配置键盘映射</h3>
+<div class="outline-text-3" id="text-18-7">
 <p>
 因为gnome 从3.22开始已经使用wayland了，所以xmodmap不起作用，
 又因为设置里还不能设置具体键位映射，只能在udev中配置，将sancodes直接映射为keycodes。
@@ -591,10 +614,32 @@ evdev:input:b*v05AFp8277* # was tested on Kensington Slim Type USB (with old ABI
 </div>
 </div>
 
+<div id="outline-container-sec-18-8" class="outline-3">
+<h3 id="sec-18-8"><span class="section-number-3">18.8</span> 设置按键延时和重复速度</h3>
+<div class="outline-text-3" id="text-18-8">
+<p>
+使用dconf editor 编辑
+这里是按键按下到开始连击的延时，以毫秒计。
+</p>
+<div class="org-src-container">
 
-<div id="outline-container-sec-18-7" class="outline-3">
-<h3 id="sec-18-7"><span class="section-number-3">18.7</span> 安装aur hleper</h3>
-<div class="outline-text-3" id="text-18-7">
+<pre class="src src-path">/org/gnome/desktop/peripherals/keyboard/delay
+</pre>
+</div>
+
+<p>
+这里是按键重复的间隔，以毫秒计。
+</p>
+<div class="org-src-container">
+
+<pre class="src src-path">/org/gnome/desktop/peripherals/keyboard/repeat-interval
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-sec-18-9" class="outline-3">
+<h3 id="sec-18-9"><span class="section-number-3">18.9</span> 安装aur hleper</h3>
+<div class="outline-text-3" id="text-18-9">
 <p>
 选择的是pacaur，依赖于cower
 </p>
@@ -624,7 +669,7 @@ $ cd pacaur &amp;&amp; makepkg -sri
 </div>
 </div>
 <div id="postamble" class="status">
-<p class="date">Created: 2017-03-02 Thu 11:39</p>
+<p class="date">Created: 2017-03-02 Thu 17:07</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.1.1 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
