@@ -3,8 +3,8 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>arch</title>
-<!-- 2017-03-02 Thu 17:07 -->
+<title>UEFI下安装archlinux</title>
+<!-- 2017-03-05 Sun 16:13 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <style type="text/css">
@@ -136,7 +136,7 @@ for the JavaScript code in this tag.
 </head>
 <body>
 <div id="content">
-<h1 class="title">arch</h1>
+<h1 class="title">UEFI下安装archlinux</h1>
 <div id="table-of-contents">
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
@@ -498,6 +498,12 @@ myhostname
 <li>clang
 </li>
 <li>git
+git 设置 socks5 代理
+<div class="org-src-container">
+
+<pre class="src src-bash">$ git config --global http.proxy 'socks5://127.0.0.1:1080'
+</pre>
+</div>
 </li>
 <li>chromium
 开启硬件加速:
@@ -518,7 +524,7 @@ you additionally need to pass the &#x2013;enable-native-gpu-memory-buffers flag,
 or some optimizations (like the zero-copy rasterizer) won't do anything
 <div class="org-src-container">
 
-<pre class="src src-bash">$ cat "--enable-native-gpu-memory-buffers" &gt;&gt; ~/.config/chromium-flags.conf
+<pre class="src src-bash">$ echo "--enable-native-gpu-memory-buffers" &gt;&gt; ~/.config/chromium-flags.conf
 </pre>
 </div>
 <p>
@@ -544,7 +550,8 @@ or some optimizations (like the zero-copy rasterizer) won't do anything
 </div>
 
 <p>
-添加环境变量
+由于在wayland下fcitx 无法读取 <code>~/.xprofile</code> 中的环境变量，
+所以为了fcitx正常工作，在 <code>/etc/environment</code> 中添加
 </p>
 <div class="org-src-container">
 
@@ -569,7 +576,7 @@ export XMODIFIERS=@im=fcitx
 </p>
 <div class="org-src-container">
 
-<pre class="src src-bash"># evest /dev/input/event0
+<pre class="src src-bash"># evtest /dev/input/event0
 </pre>
 </div>
 <p>
@@ -669,7 +676,7 @@ $ cd pacaur &amp;&amp; makepkg -sri
 </div>
 </div>
 <div id="postamble" class="status">
-<p class="date">Created: 2017-03-02 Thu 17:07</p>
+<p class="date">Created: 2017-03-05 Sun 16:13</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.1.1 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
