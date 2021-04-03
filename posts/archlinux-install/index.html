@@ -1,0 +1,67 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>UEFI 下安装 archlinux | CRQ's Blog</title><link rel=stylesheet href=/css/style.css><link rel=stylesheet href=/css/fonts.css></head><body><nav><ul class=menu><li><a href=/>主页</a></li><li><a href=/about/>关于</a></li><li><a href=/tags/>标签</a></li><li><a href=/index.xml>订阅</a></li></ul><hr></nav><div class=article-meta><h1><span class=title>UEFI 下安装 archlinux</span></h1><h2 class=date>2017/03/05</h2></div><nav id=TableOfContents><ul><li><a href=#uefi下安装archlinux>UEFI下安装archlinux</a><ul><li><a href=#1-确认启动模式>1 确认启动模式</a></li><li><a href=#2-连接因特网并且更新系统时间>2 连接因特网并且更新系统时间</a></li><li><a href=#3-分区>3 分区</a></li><li><a href=#4-格式化>4 格式化</a></li><li><a href=#5-挂载>5 挂载</a></li><li><a href=#6-安装基本包>6 安装基本包</a></li><li><a href=#7-生成fstab>7 生成fstab</a></li><li><a href=#8-进入新系统>8 进入新系统</a></li><li><a href=#9-设置当地时间>9 设置当地时间</a></li><li><a href=#10-设置locale>10 设置locale</a></li><li><a href=#11-设置主机名>11 设置主机名</a></li><li><a href=#12-网络设置>12 网络设置</a></li><li><a href=#13-initramfs>13 Initramfs</a></li><li><a href=#14-grub>14 grub</a></li><li><a href=#15-安装ucode>15 安装ucode</a></li><li><a href=#16-生成grubcfg>16 生成grub.cfg</a></li><li><a href=#17-至此已经安装完毕了可以退出livecd>17 至此已经安装完毕了，可以退出livecd</a></li><li><a href=#18-配置系统>18 配置系统</a><ul><li><a href=#181-添加新用户>18.1 添加新用户</a></li><li><a href=#182-修改sudo>18.2 修改sudo</a></li><li><a href=#183-显示驱动>18.3 显示驱动</a></li><li><a href=#184-桌面环境>18.4 桌面环境</a></li><li><a href=#185-软件>18.5 软件</a></li><li><a href=#186-安装fcitx>18.6 安装fcitx</a></li><li><a href=#187-配置键盘映射>18.7 配置键盘映射</a></li><li><a href=#188-设置按键延时和重复速度>18.8 设置按键延时和重复速度</a></li><li><a href=#189-安装aur-hleper>18.9 安装aur hleper</a></li></ul></li></ul></li></ul></nav><main><h1 id=uefi下安装archlinux>UEFI下安装archlinux</h1><h2 id=1-确认启动模式>1 确认启动模式</h2><p>如果主板支持uefi，arch启动镜像会使用uefi启动，为了确认，显示efivar目录</p><pre><code># ls /sys/firmware/efi/efivars
+</code></pre><p>如果目录不存在，则系统为bios模式启动</p><h2 id=2-连接因特网并且更新系统时间>2 连接因特网并且更新系统时间</h2><pre><code># ping www.baidu.com
+# timedatectl set-ntp true
+</code></pre><h2 id=3-分区>3 分区</h2><p>使用parted进行分区，键入help查看帮助。 新建分区表</p><pre><code>(parted) mklabel
+New disk label type? gpt
+</code></pre><p>启动分区</p><pre><code>(parted) mkpart ESP fat32 1MiB 513MiB
+(parted) set 1 boot on
+</code></pre><p>根目录</p><pre><code>(parted) mkpart primary ext4 513MiB 20.5GiB
+</code></pre><p>home目录</p><pre><code>(parted) mkpart primary ext4 20.5GiB 100%
+</code></pre><p>parted默认是开启了区块对齐的，可以提高硬盘的读写速度。 如果分区大小不能对齐，parted会显示一下信息。</p><pre><code>(parted) mkpart primary fat16 0 32M
+Warning: The resulting partition is not properly aligned for best performance.
+Ignore/Cancel?
+</code></pre><p>如果分区单位是MiB或者GiB， 默认就是对齐的。</p><h2 id=4-格式化>4 格式化</h2><pre><code># mkfs.fat -F 32 /dev/sda1
+# mkfs.ext4 /dev/sda2
+</code></pre><h2 id=5-挂载>5 挂载</h2><pre><code># mount /dev/sda2 /mnt
+# mkdir -p /mnt/boot/efi
+# mkdir -p /mnt/home
+
+# mount /dev/sda1 /mnt/boot/efi
+# mount /dev/sda3 /mnt/home
+</code></pre><h2 id=6-安装基本包>6 安装基本包</h2><p>在安装包之前，最好是先设置一下源。 选择所有中国的源</p><pre><code># sed -i '/Score/{/China/!{n;s/^/#/}}' /etc/pacman.d/mirrorlist
+</code></pre><p>base-devel 是常用工具</p><pre><code># pacstrap /mnt base base-devel
+</code></pre><h2 id=7-生成fstab>7 生成fstab</h2><pre><code># genfstab -U /mnt &gt;&gt; /mnt/etc/fstab
+</code></pre><h2 id=8-进入新系统>8 进入新系统</h2><pre><code># arch-chroot /mnt
+</code></pre><h2 id=9-设置当地时间>9 设置当地时间</h2><pre><code># ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+# hwclock --systohc
+</code></pre><h2 id=10-设置locale>10 设置locale</h2><p>需要的语言取消注释</p><pre><code># vim /etc/locale.gen
+# locale-gen
+# echo &quot;LANG=en_US.UTF-8&quot; &gt;&gt; /etc/locale.conf
+</code></pre><h2 id=11-设置主机名>11 设置主机名</h2><pre><code>/etc/hostname
+myhostname
+/etc/hosts
+127.0.0.1   localhost.localdomain   localhost
+::1     localhost.localdomain   localhost
+127.0.1.1   myhostname.localdomain  myhostname
+</code></pre><h2 id=12-网络设置>12 网络设置</h2><h2 id=13-initramfs>13 Initramfs</h2><pre><code># mkinitcpio -p linux
+</code></pre><h2 id=14-grub>14 grub</h2><pre><code># pacman -S grub efibootmgr
+# grub-install --target=x86_64-efi --efi-directory=esp_mount --bootloader-id=grub
+</code></pre><h2 id=15-安装ucode>15 安装ucode</h2><pre><code># pacman -S intel-ucode
+</code></pre><h2 id=16-生成grubcfg>16 生成grub.cfg</h2><pre><code># grub-mkconfig -o /boot/grub/grub.cfg
+</code></pre><h2 id=17-至此已经安装完毕了可以退出livecd>17 至此已经安装完毕了，可以退出livecd</h2><h2 id=18-配置系统>18 配置系统</h2><h3 id=181-添加新用户>18.1 添加新用户</h3><pre><code># useradd -m -G wheel -s /bin/bash archie
+</code></pre><h3 id=182-修改sudo>18.2 修改sudo</h3><pre><code># visudo
+</code></pre><p>允许wheel组使用sudo</p><h3 id=183-显示驱动>18.3 显示驱动</h3><pre><code># pacman -S mesa vulkan-intel libva-intel-driver
+</code></pre><h3 id=184-桌面环境>18.4 桌面环境</h3><pre><code># pacman -S gnome
+</code></pre><h3 id=185-软件>18.5 软件</h3><ul><li><p>openssh</p></li><li><p>clang</p></li><li><p>git git 设置 socks5 代理</p><pre><code>$ git config --global http.proxy 'socks5://127.0.0.1:1080'
+</code></pre></li><li><p>chromium 开启硬件加速:</p><ul><li><p>在 chrome://flags 打开:</p><ul><li>Override software rendering list</li><li>GPU rasterization</li><li>Zero-copy rasterizer</li></ul></li><li><p>打开Native GpuMemoryBuffers Wiki: If &ldquo;Native GpuMemoryBuffers&rdquo; under chrome://gpu mentions software renderi you additionally need to pass the –enable-native-gpu-memory-buffers flag, or some optimizations (like the zero-copy rasterizer) won&rsquo;t do anything</p><pre><code>$ echo &quot;--enable-native-gpu-memory-buffers&quot; &gt;&gt; ~/.config/chromium-flags.conf
+</code></pre><p>手动重启chromium.</p></li></ul></li><li><p>proxychains-nga 配置 /etc/proxychain.conf</p></li></ul><h3 id=186-安装fcitx>18.6 安装fcitx</h3><pre><code># pacman -S fcitx fcitx-gtk3 fcitx-gtk2 fcitx-qt5 fcitx-configtool
+</code></pre><p>由于在wayland下fcitx 无法读取 <code>~/.xprofile</code> 中的环境变量， 所以为了fcitx正常工作，在 <code>/etc/environment</code> 中添加</p><pre><code>export GTK_IM_MODULE=fcitx                                                      
+export QT_IM_MODULE=fcitx                                                       
+export XMODIFIERS=@im=fcitx
+</code></pre><h3 id=187-配置键盘映射>18.7 配置键盘映射</h3><p>因为gnome 从3.22开始已经使用wayland了，所以xmodmap不起作用， 又因为设置里还不能设置具体键位映射，只能在udev中配置，将sancodes直接映射为keycodes。 <a href=https://wiki.archlinux.org/index.php/Map_scancodes_to_keycodes>Map scancodes to keycodes</a></p><p>查看keycode，如果不知道是那个event 进入by-id 查看软链接。</p><pre><code># evtest /dev/input/event0
+</code></pre><p>MSCSCAN就是该按键的scancodes。</p><p>创建配置文件 使用lsusb，查看键盘vendor id和product id 格式:</p><pre><code>KEYBOARD_KEY_&lt;scancode&gt;=&lt;keycode&gt;
+</code></pre><p>keycode可以在</p><pre><code>/usr/include/linux/input-event-codes.h (see the KEY_&lt;KEYCODE&gt; variables)
+</code></pre><p>示例配置</p><pre><code>/etc/udev/hwdb.d/10-my-modifiers.hwdb
+evdev:input:b*v05AFp8277* # was tested on Kensington Slim Type USB (with old ABI)
+ KEYBOARD_KEY_70039=leftalt  # bind capslock to leftalt
+ KEYBOARD_KEY_700e2=leftctrl # bind leftalt to leftctrl
+</code></pre><p>更新并重载Hardware Database index</p><pre><code># systemd-hwdb update
+# udevadm trigger
+</code></pre><h3 id=188-设置按键延时和重复速度>18.8 设置按键延时和重复速度</h3><p>使用dconf editor 编辑 这里是按键按下到开始连击的延时，以毫秒计。</p><pre><code>/org/gnome/desktop/peripherals/keyboard/delay
+</code></pre><p>这里是按键重复的间隔，以毫秒计。</p><pre><code>/org/gnome/desktop/peripherals/keyboard/repeat-interval
+</code></pre><h3 id=189-安装aur-hleper>18.9 安装aur hleper</h3><p>选择的是pacaur，依赖于cower</p><p>首先需要导入key</p><pre><code>$ gpg --recv-keys --keyserver hkp://pgp.mit.edu 1EB2638FF56C0C53
+</code></pre><p>安装</p><pre><code>$ git clone https://aur.archlinux.org/cower.git 
+$ cd cower &amp;&amp; makepkg -sri
+$ git clone https://aur.archlinux.org/pacaur.git
+$ cd pacaur &amp;&amp; makepkg -sri
+</code></pre></main><footer><hr><div id=gitalk-container></div><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css><script src=https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js></script><script>const gitalk=new Gitalk({clientID:'5b5223cfb72ce265351e',clientSecret:'3fdb0bd0bbcc1c20993092300757d90a9b1b86eb',repo:'comments',owner:'csomnia',admin:['csomnia'],id:location.pathname,distractionFreeMode:!1});(function(){if(["localhost","127.0.0.1"].indexOf(window.location.hostname)!=-1){document.getElementById('gitalk-container').innerHTML='Gitalk comments not available by default when the website is previewed locally.';return}gitalk.render('gitalk-container')})()</script><script>MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']]}}</script><script type=text/javascript id=MathJax-script async src=https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js></script><script async src=//yihui.org/js/center-img.js></script><hr>© Runqing Chang 2017 &ndash; 2021 · Powered by <a href=https://gohugo.io>Hugo</a> · Theme <a href=https://github.com/yihui/hugo-xmin>XMin</a></footer></body></html>

@@ -1,0 +1,56 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>使用粒子系统模拟水面 | CRQ's Blog</title><link rel=stylesheet href=/css/style.css><link rel=stylesheet href=/css/fonts.css></head><body><nav><ul class=menu><li><a href=/>主页</a></li><li><a href=/about/>关于</a></li><li><a href=/tags/>标签</a></li><li><a href=/index.xml>订阅</a></li></ul><hr></nav><div class=article-meta><h1><span class=title>使用粒子系统模拟水面</span></h1><h2 class=date>2017/06/25</h2></div><nav id=TableOfContents><ul><li><a href=#introduction-to-position-based-fluid>Introduction to Position Based Fluid</a><ul><li><a href=#1-简介>1 简介</a></li><li><a href=#2-算法概述>2 算法概述</a><ul><li><a href=#21-position-based-dynamics>2.1 Position Based Dynamics</a><ul><li><a href=#211-概述>2.1.1 概述</a></li><li><a href=#212-算法流程>2.1.2 算法流程</a></li><li><a href=#213-constrain-约束>2.1.3 Constrain (约束)</a></li><li><a href=#214-constrain-projetion-约束映射>2.1.4 Constrain Projetion (约束映射)</a></li><li><a href=#215-solver>2.1.5 Solver</a></li></ul></li><li><a href=#22-position-based-fluids>2.2 Position Based Fluids</a><ul><li><a href=#221-incompressibility-不可压缩性>2.2.1 Incompressibility (不可压缩性)</a></li><li><a href=#222-tensile-instability-稳定张力>2.2.2 Tensile Instability (稳定张力)</a></li><li><a href=#223-vorticity-confinement-and-viscosity>2.2.3 Vorticity Confinement and Viscosity</a></li><li><a href=#224-碰撞检测>2.2.4 碰撞检测</a></li><li><a href=#225-solver>2.2.5 Solver</a></li></ul></li></ul></li></ul></li></ul></nav><main><h1 id=introduction-to-position-based-fluid>Introduction to Position Based Fluid</h1><p>[TOC]</p><h2 id=1-简介>1 简介</h2><p>这学期计算机图形学最后有个大作业，老师给了几个题目，也可以自行选择， 我在 <a href=https://cs184.eecs.berkeley.edu/sp17/>CS184</a> 的 Final Project 中发现了流体模拟 (<a href=http://jamesjia.com/cs184-fluidsim>Fluid Simulation</a>) 这个项目， 折腾了一个星期大概做出来一个雏形， 正好借此机会 开始搞一个博客记录一下折腾的过程；整个项目实现了 <a href=http://mmacklin.com/pbf_sig_preprint.pdf>Position Based Fluids </a>这篇文章的一小部分， 论文的思想大概就是使用 粒子系统来对水面进行模拟。这里把我学习和实现的过程记录下来</p><h2 id=2-算法概述>2 算法概述</h2><h3 id=21-position-based-dynamics>2.1 Position Based Dynamics</h3><p>论文链接: <a href=http://matthias-mueller-fischer.ch/publications/posBasedDyn.pdf>PBD</a></p><h4 id=211-概述>2.1.1 概述</h4><p>为了介绍 PBF， 我觉得最好还是了解一下 PBD；对于传统的粒子系统， 符合常理的解法就是获得每一个粒子的受力， 然后获得加速度 求积分获得当前速度， 然后对速度在积分获得粒子的位置， 但是 PBD 不同， PBD是通过一系列的位置约束来直接对粒子的位置进行调整，从而模拟相关物理效果。也就是说， 通过这些约束， 让粒子的运动规律只是看起来像物理效果罢了。</p><h4 id=212-算法流程>2.1.2 算法流程</h4><p>算法大概流程是这样的：</p><ol><li>通过当前粒子受力更新粒子速度$v_i \leftarrow v_i + \Delta t f_ext(x_i)$</li><li>更新粒子位置</li><li>求解位置约束</li><li>更新粒子速度</li></ol><p>我个人的理解就是首先根据外力来对粒子进行移动， 这保证了外力对粒子的作用， 之后再根据位置约束来对粒子进行位置的修正， 这保证 了粒子的所模拟的系统的特性， 如 PBF 中水的不可压缩性、模拟布料中布料的韧度。最后根据修正之后的位置对速度进行更新。</p><h4 id=213-constrain-约束>2.1.3 Constrain (约束)</h4><p>首先我们来看一个约束， 这个约束是文中所提到的， 也是最简单的约束之一， 被用在布料的模拟中。
+$$
+C(\mathbf p_1, \mathbf p_2) = |\mathbf p_1 - \mathbf p_2 | - d
+$$
+其中 $\mathbf p_1, \mathbf p_2$ 是两个点， $d$是一个常数， 这个约束用来描述两个点之间的距离关系， 约束有两种类型一种是 equality 也就是相等约束， 成立条件是约束为零 $C(x_1, &mldr; ,x_n) = 0$， 另一种是 inequality 约束， 成立条件是$C(x_1, &mldr; ,x_n) \geq 0$，上面提到的距离 约束是一个相等约束。</p><h4 id=214-constrain-projetion-约束映射>2.1.4 Constrain Projetion (约束映射)</h4><p>这个步骤就是整个算法中最关键的一个部分， 翻译过来好像有点别扭， 大概的意思是使用给定的约束来修正粒子的位置。
+接下来的我就结合我自己的理解和这个教程中的讲解进行描述， 可能会有不严谨的地方， 具体可以参考 [Mullel et. 2006] 3.3 Constrain Projection.
+映射一个约束， 就是使这个约束成立， 对于一个能量守恒的系统， 其动量是守恒的(包括线动量和角动量)， 如果对于一个约束， 总体修正的后的位置不满足其动量守恒， 就会使得 整个系统的运动行为及其诡异(文中称为“ghost forces” )， 举个例子如果对于上面提到的那个约束， 如果采用这样的方式来修正 [这里有个图片！] 显然会使得两个粒子的角动量不守恒，所以为了映射一个约束， 应该使得粒子修正的方向沿着约束的梯度进行变化， 因为这样的话修正带来的变化对于约束起到的变化 最大， 也就是说， 对约束之外的影响最小。
+对于约束使用牛顿方程展开得
+$$
+C(\mathbf p_1 + \Delta p) \approx C(\mathbf p) + \nabla_pC(\mathbf p) \cdot \Delta
+$$
+其中为了使得$\Delta p$ 沿着梯度的方向，</p><p>$$
+\Delta \mathbf p = \lambda \nabla_pC(\mathbf p)
+$$</p><p>带入展开式得到</p><p>$$
+\Delta \mathbf p = \frac{C(\mathbf p)}{|\nabla_pC(\mathbf p)|^{2}} \nabla_p C(\mathbf p)
+$$</p><p>其中$\nabla_pC(\mathbf p$是指 $\nabla C(\mathbf p)$关于 $p$ 的梯度， 但是这里有个容易晕的地方， 上面的公式都是以向量的 形式给出的， 其中 $\mathbf p$ 为 $[\mathbf p^T_1, &mldr;,\mathbf p^T_n]^T$， 所以在实际使用的时候需要在转换为对每一个独立粒子的形式， 具体就是[Mullel et. 2006]中的公式(6)(7)。
+对于上文中提到的距离约束， 其映射规则也就是 $\Delta \mathbf p$，首先要求得$C(\mathbf p)$ 关于 $\mathbf p1, \mathbf p2$的梯度， 原文中提到的是质量不相同情况， 这里假设质量相同。
+$\nabla_{\mathbf p_1} = \frac {\mathbf p_1 - \mathbf p_2}{|\mathbf p_1 - \mathbf p_2|}$ $\nabla_{\mathbf p_2} = - \frac {\mathbf p_1 - \mathbf p_2}{|\mathbf p_1 - \mathbf p_2|}$ 带入[Mullel et. 2006]中的公式(6)(7)， 得到
+$$
+\Delta_{\mathbf p_1} = - \frac{|\mathbf p_1 - \mathbf p_2| - d}{2} \cdot \frac{\mathbf p_1 - \mathbf p_2}{|\mathbf p_1 - \mathbf p_2|}
+$$
+$$
+\Delta_{\mathbf p_2} = + \frac{|\mathbf p_1 - \mathbf p_2| - d}{2} \cdot \frac{\mathbf p_1 - \mathbf p_2}{|\mathbf p_1 - \mathbf p_2|}
+$$
+这样的话就就得到了约束映射的公式。</p><h4 id=215-solver>2.1.5 Solver</h4><p>在[Mullel et. 2006]中对整个系统进行求解的时， 采用的的是类似于Gauss-Seidel解线性方程的进行不断的迭代， 对于一个约束， 一旦计算出 $\Delta \mathbf p$ 之后， 立刻修正粒子的位置， 在下一次约束映射时可能就用到的是刚刚更新后的粒子位置。</p><h3 id=22-position-based-fluids>2.2 Position Based Fluids</h3><p>在之前有了PBD的基础后， 理解PBF应该就相对来说比较容易了， PBF是一种基于PBD的流体模拟技术， 使用了一些特殊约束来获得水模拟的效果。 其约束的来源应该是来自于SPH的启发。详见这篇论文 论文连接。</p><h4 id=221-incompressibility-不可压缩性>2.2.1 Incompressibility (不可压缩性)</h4><p>在整个PBF的模拟中最重要的约束就是这个约束， 通过这个约束来模拟了水的不可压缩的效果， 我的理解是约束保证了全局的密度维持在一个常数，</p><p>$$
+C_i(\mathbf p_1, &mldr;, \mathbf p_n) = \frac{\rho_i}{\rho_0} - 1
+$$
+具体约束公式是对于每一个粒子， 都存在一个约束， 其约束对象是包括自己的所有邻居， 邻居是由一个距离常数来确定的。 ρi 是通过粒子的 邻居来对粒子进行密度估计(standard SPH density estimator):</p><p>$$
+\rho_i = \sum_j m_jW(\mathbf p_i -\mathbf p_j, h)
+$$
+其中$W$为核， 在求得约束的时候使用的是Poly6 kerrnel在需要对约束求梯度的时候， 使用的是Spiky kernel， 都可以在这篇论文中找到[Mullel et al. 2003]。
+与上面的过程类似， 可以得到约束对于每个粒子的修正， 论文中也给出了相应的公式， 我在这里想要更改一下论文中公式的顺序， 并且补充一点解释， 希望可以更容易理解。 首先根据约束公式不难得出最终的修正量为：
+$$
+\Delta_{\mathbf p_i} = \frac{1}{\rho_0} \sum_j \lambda_i \nabla W(\mathbf p_i - \mathbf p_j , h)
+$$
+论文中的公式多了一个$\lambda_j$， 论文中没有说明， 我在网上查了一下， 他的结论是求平均 <a href=http://blog.csdn.net/knight_lyh/article/details/56282584>一篇相当不错的PBF讲解</a>
+论文中出现的公式:
+$$
+\Delta_{\mathbf p_i} = \frac{1}{\rho_0} \sum_j (\lambda_i + \lambda_j) \nabla W(\mathbf p_i - \mathbf p_j , h)
+$$
+其中求和号是来自于对density estimator求梯度得到的， 然后我们来看一下 $\lambda_i$， 与之前的类似，</p><p>$$
+\lambda_i = - \frac{C_i(\mathbf p_i, &mldr;, \mathbf p_n)}{\sum_k |\nabla_{\mathbf p_k}C_i|^2}
+$$
+其中这个$k$其实与上面的$n$类似， 遍历的范围都是$i$的所有邻居， 求在$i$点的梯度(不知道这个叫法对不对)， 然后在看一下$\nabla_{\mathbf p_k}C_i$</p><p>$$
+\nabla_{\mathbf p_k}C_i = \frac{1}{\rho_0} \sum_j \nabla_{\mathbf p_k} W(\mathbf p_i - \mathbf p_j , h)
+$$
+注意到这个式子中的$k$， 由于是关于$k$的偏导， 如果$k == i$， 也就是中心节点的话， 求和号中每一项都不为0，如果$k \neq i$， 那么在求和号展开的时候， 只有$j$为$k$本身的时候不为0， 那么说这个求和号中只有一项。于是这个梯度的计算就可以根据$k$的类型来进行简化。</p><p>$$
+\nabla_{\mathbf p_k}C_i = \frac{1}{\rho_0} \sum_j \nabla_{\mathbf p_k} W(\mathbf p_i - \mathbf p_j , h)
+$$
+以上就是 Incompressibility 约束的映射过程。接下来就是一些 hack 了， 首先考虑如果一个粒子周围没有邻居， 这样的情况是可能发生的。 这样的话有可能导致 $\lambda$ 的分母为零， 这样就很麻烦了， 具体论文中有详细的解释。所以这里加了一个松弛系数 $\varepsilon$</p><p>$$
+\lambda_i = - \frac{C_i(\mathbf p_i, &mldr;, \mathbf p_n)}{\sum_k |\nabla_{\mathbf p_k}C_i|^2 + \varepsilon}
+$$</p><h4 id=222-tensile-instability-稳定张力>2.2.2 Tensile Instability (稳定张力)</h4><p>如果单单实现了 Incompressibility constrain， 在没有外力的情况下放一块水， 会发现有一个比较奇怪现象， 粒子大部分都聚集在水球的表面 导致了内部粒子很稀疏， 其实这是上面说道的 Incompressibility constrain 不可避免的， 因为约束的核心是 density estimator 并且采用的 kernal 是有距离 h 的界限的， 并且所有粒子的质量相同， 那么密度与其邻居的数量和邻居的距离正相关， 那么在一个球表面的粒子， 他的邻居比较少， 所以 如果要达到与内部粒子相同的密度， 就需要他的邻居距离他比较近。 论文中为了解决这个问题引入了artificial presure(人工压力)</p><p>$$
+S_{corr} = -k \bigg(\frac{W(\mathbf p_i - \mathbf p_j, h)}{W(\Delta q, h)}\bigg)^n
+$$</p><p>$\Delta q$ 为一个预先定义的距离， $k$ 为一个比较小的数， $n$ 通常为4。加入人工压力之后， 约束映射变为</p><p>$$
+\Delta_{\mathbf p_i} = \frac{1}{\rho_0} \sum_j (\lambda_i + \lambda_j + S_{corr}) \nabla W(\mathbf p_i - \mathbf p_j , h)
+$$</p><p>因为$S_{corr}$为负， 所以不会导致水中心的粒子过于稀疏。</p><h4 id=223-vorticity-confinement-and-viscosity>2.2.3 Vorticity Confinement and Viscosity</h4><p>这部分我没有加进去。。</p><h4 id=224-碰撞检测>2.2.4 碰撞检测</h4><p>我了解的碰撞检测方式有两种， 一种是把粒子移动到运动轨迹与碰撞面交点， 另一种是把粒子直接投射到碰撞面上， 一开始采用了第一种， 不过第一种 是存在问题的， 因为在 PBF 中， 粒子的速度是最后一步通过 $\Delta \mathbf p$ 进行确定的， 碰撞检测并不会直接修改速度， 这样子的话， 如果使用 第一种碰撞检测， 当一个粒子已经在碰撞面上， 下一次的 $\Delta \mathbf p$ 与碰撞面的法线 cos 为负的话， 粒子会保持不动， 这就会导致粒子看起来 被卡在碰撞面上一样。如果采用第二种， 就会保证粒子在碰撞面上仍然可以移动。 <a href=https://stackoverflow.com/questions/9605556/how-to-project-a-3d-point-to-a-3d-plane>如何投影3D点</a></p><h4 id=225-solver>2.2.5 Solver</h4><p>与PBD中使用的类似Gauss-Seidel的求解过程不同， 由于为了并行处理， 使用了类似于Jacobi的求解方式， 在一次迭代计算完全结束前， 使用 的是上一次的位置数据。</p></main><footer><hr><div id=gitalk-container></div><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css><script src=https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js></script><script>const gitalk=new Gitalk({clientID:'5b5223cfb72ce265351e',clientSecret:'3fdb0bd0bbcc1c20993092300757d90a9b1b86eb',repo:'comments',owner:'csomnia',admin:['csomnia'],id:location.pathname,distractionFreeMode:!1});(function(){if(["localhost","127.0.0.1"].indexOf(window.location.hostname)!=-1){document.getElementById('gitalk-container').innerHTML='Gitalk comments not available by default when the website is previewed locally.';return}gitalk.render('gitalk-container')})()</script><script>MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']]}}</script><script type=text/javascript id=MathJax-script async src=https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js></script><script async src=//yihui.org/js/center-img.js></script><hr>© Runqing Chang 2017 &ndash; 2021 · Powered by <a href=https://gohugo.io>Hugo</a> · Theme <a href=https://github.com/yihui/hugo-xmin>XMin</a></footer></body></html>

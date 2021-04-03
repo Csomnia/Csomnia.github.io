@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Home on CRQ's Blog</title><link>/</link><description>Recent content in Home on CRQ's Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><lastBuildDate>Sat, 17 Oct 2020 00:00:00 +0000</lastBuildDate><atom:link href="/index.xml" rel="self" type="application/rss+xml"/><item><title>AEP入门指北</title><link>/posts/aep-tutorial/</link><pubDate>Sat, 17 Oct 2020 00:00:00 +0000</pubDate><guid>/posts/aep-tutorial/</guid><description>[TOC]
+简介 用了一段时间AEP了，现在写一个材料给大家分享一下，从零开始的AEP入门。
+AEP 与 CPU 的 iMC 相连需要 CPU 使用 load/store 指令进行读写，load/store 指令往往就牵扯到 CPU 的 memory-model，再加上使用 AEP 的时候往往是希望利用其持久化的特性的，所以要做到一个正确的设计就首先需要对CPU的memory-model（或者说指令顺序及效果）有个基本的认识。
+同时目前 Intel 的 AEP 实现也相对比较复杂，看起来是只是一个新介质，但实际上是一个复合的存储系统，所以要做到一个高性能的设计还需要对 AEP 本身的架构以及内核是如何进行有一个基本的认识。
+因此AEP实际上是一个比较综合的话题，我过去几个月中阅读了一些相关的资料，发现很多资料对于小白也不够友好（因为当时我也是小白），同时也结合一些我的心得，打算系统的分享出来。
+整体分成下面几块
+如何持久化的把一块数据写到内存
+在这个部分，先以抽象的方式假设有一段内存地址提供持久化功能，讨论如何写入一条记录，主要目的是引入memory-model相关的话题（cache结构、指令顺序）。为什么先假设有一段内存地址是持久化的，主要是想说明这部分复杂度是由于CPU本身造成的，与AEP本身的硬件无关。
+结合CPU内存模型简单介绍一下如何写一段数据到内存 真正的持久化内存
+通过第一部分，已经了解了一般化的如何持久化的写一条记录，在这一部分，会从最底层介质颗粒开始逐渐向上，介绍AEP的结构以及如何与系统集成的，也介绍了一些必要的特性，比如掉电保护、Interleave。对AEP结构的了解有利于理解AEP一些性能优化的方式。
+从介质开始简单介绍一下 AEP 100系列的硬件架构，及其特性 如何使用持久化内存
+其实AEP用起来还是蛮简单的，在这个部分我们先介绍AEP给我们提供的使用模式，以及如何通过命令行初始化一个AEP创建文件系统，同时也介绍了一下Intel提供的PMDK工具包的功能。
+简介DAX，简述一下一个fs-dax是怎么写入AEP的 简单介绍一下PMDK是啥，各个库大概干啥的 心得&amp;amp;杂记
+这个部分就是介绍一下RPMA，介绍一下性能优化的考虑，以及简单介绍一下之前有个AEP的比赛
+简单介绍一下RDMA配合AEP使用的情况 简单介绍一下性能考虑 比赛 水平有限且有的地方写的确实不严谨，欢迎提出任何意见
+如何持久化的把一块数据写到内存 那么我们现在假设有一段内存（地址）拥有持久化的能力（假设你能获得物理地址或者说不考虑虚拟内存，且写在 Cache 中不算写入内存）。
+我们想要存储一段数据，最简单的方案就是直接 copy，如下</description></item><item><title>使用粒子系统模拟水面</title><link>/posts/pbf/</link><pubDate>Sun, 25 Jun 2017 00:00:00 +0000</pubDate><guid>/posts/pbf/</guid><description>Introduction to Position Based Fluid [TOC]
+1 简介 这学期计算机图形学最后有个大作业，老师给了几个题目，也可以自行选择， 我在 CS184 的 Final Project 中发现了流体模拟 (Fluid Simulation) 这个项目， 折腾了一个星期大概做出来一个雏形， 正好借此机会 开始搞一个博客记录一下折腾的过程；整个项目实现了 Position Based Fluids 这篇文章的一小部分， 论文的思想大概就是使用 粒子系统来对水面进行模拟。这里把我学习和实现的过程记录下来
+2 算法概述 2.1 Position Based Dynamics 论文链接: PBD
+2.1.1 概述 为了介绍 PBF， 我觉得最好还是了解一下 PBD；对于传统的粒子系统， 符合常理的解法就是获得每一个粒子的受力， 然后获得加速度 求积分获得当前速度， 然后对速度在积分获得粒子的位置， 但是 PBD 不同， PBD是通过一系列的位置约束来直接对粒子的位置进行调整，从而模拟相关物理效果。也就是说， 通过这些约束， 让粒子的运动规律只是看起来像物理效果罢了。
+2.1.2 算法流程 算法大概流程是这样的：
+通过当前粒子受力更新粒子速度$v_i \leftarrow v_i + \Delta t f_ext(x_i)$ 更新粒子位置 求解位置约束 更新粒子速度 我个人的理解就是首先根据外力来对粒子进行移动， 这保证了外力对粒子的作用， 之后再根据位置约束来对粒子进行位置的修正， 这保证 了粒子的所模拟的系统的特性， 如 PBF 中水的不可压缩性、模拟布料中布料的韧度。最后根据修正之后的位置对速度进行更新。</description></item><item><title>UEFI 下安装 archlinux</title><link>/posts/archlinux-install/</link><pubDate>Sun, 05 Mar 2017 00:00:00 +0000</pubDate><guid>/posts/archlinux-install/</guid><description>UEFI下安装archlinux 1 确认启动模式 如果主板支持uefi，arch启动镜像会使用uefi启动，为了确认，显示efivar目录
+# ls /sys/firmware/efi/efivars 如果目录不存在，则系统为bios模式启动
+2 连接因特网并且更新系统时间 # ping www.baidu.com # timedatectl set-ntp true 3 分区 使用parted进行分区，键入help查看帮助。 新建分区表
+(parted) mklabel New disk label type? gpt 启动分区
+(parted) mkpart ESP fat32 1MiB 513MiB (parted) set 1 boot on 根目录
+(parted) mkpart primary ext4 513MiB 20.5GiB home目录
+(parted) mkpart primary ext4 20.5GiB 100% parted默认是开启了区块对齐的，可以提高硬盘的读写速度。 如果分区大小不能对齐，parted会显示一下信息。
+(parted) mkpart primary fat16 0 32M Warning: The resulting partition is not properly aligned for best performance.</description></item><item><title>About CRQ</title><link>/about/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/about/</guid><description>研发工程师@Baidu
+对分布式系统感兴趣，目前工作方向是存储相关
+你可以通过以下方式联系我:
+QQ: MzQ2MDk3NjAxCg==
+Email: Y2hhbmdydW5xaW5nQGdtYWlsLmNvbQo=</description></item></channel></rss>

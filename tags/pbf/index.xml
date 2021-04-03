@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>PBF on CRQ's Blog</title><link>/tags/pbf/</link><description>Recent content in PBF on CRQ's Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><lastBuildDate>Sun, 25 Jun 2017 00:00:00 +0000</lastBuildDate><atom:link href="/tags/pbf/index.xml" rel="self" type="application/rss+xml"/><item><title>使用粒子系统模拟水面</title><link>/posts/pbf/</link><pubDate>Sun, 25 Jun 2017 00:00:00 +0000</pubDate><guid>/posts/pbf/</guid><description>Introduction to Position Based Fluid [TOC]
+1 简介 这学期计算机图形学最后有个大作业，老师给了几个题目，也可以自行选择， 我在 CS184 的 Final Project 中发现了流体模拟 (Fluid Simulation) 这个项目， 折腾了一个星期大概做出来一个雏形， 正好借此机会 开始搞一个博客记录一下折腾的过程；整个项目实现了 Position Based Fluids 这篇文章的一小部分， 论文的思想大概就是使用 粒子系统来对水面进行模拟。这里把我学习和实现的过程记录下来
+2 算法概述 2.1 Position Based Dynamics 论文链接: PBD
+2.1.1 概述 为了介绍 PBF， 我觉得最好还是了解一下 PBD；对于传统的粒子系统， 符合常理的解法就是获得每一个粒子的受力， 然后获得加速度 求积分获得当前速度， 然后对速度在积分获得粒子的位置， 但是 PBD 不同， PBD是通过一系列的位置约束来直接对粒子的位置进行调整，从而模拟相关物理效果。也就是说， 通过这些约束， 让粒子的运动规律只是看起来像物理效果罢了。
+2.1.2 算法流程 算法大概流程是这样的：
+通过当前粒子受力更新粒子速度$v_i \leftarrow v_i + \Delta t f_ext(x_i)$ 更新粒子位置 求解位置约束 更新粒子速度 我个人的理解就是首先根据外力来对粒子进行移动， 这保证了外力对粒子的作用， 之后再根据位置约束来对粒子进行位置的修正， 这保证 了粒子的所模拟的系统的特性， 如 PBF 中水的不可压缩性、模拟布料中布料的韧度。最后根据修正之后的位置对速度进行更新。</description></item></channel></rss>

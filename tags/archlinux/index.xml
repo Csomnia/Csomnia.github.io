@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>archlinux on CRQ's Blog</title><link>/tags/archlinux/</link><description>Recent content in archlinux on CRQ's Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><lastBuildDate>Sun, 05 Mar 2017 00:00:00 +0000</lastBuildDate><atom:link href="/tags/archlinux/index.xml" rel="self" type="application/rss+xml"/><item><title>UEFI 下安装 archlinux</title><link>/posts/archlinux-install/</link><pubDate>Sun, 05 Mar 2017 00:00:00 +0000</pubDate><guid>/posts/archlinux-install/</guid><description>UEFI下安装archlinux 1 确认启动模式 如果主板支持uefi，arch启动镜像会使用uefi启动，为了确认，显示efivar目录
+# ls /sys/firmware/efi/efivars 如果目录不存在，则系统为bios模式启动
+2 连接因特网并且更新系统时间 # ping www.baidu.com # timedatectl set-ntp true 3 分区 使用parted进行分区，键入help查看帮助。 新建分区表
+(parted) mklabel New disk label type? gpt 启动分区
+(parted) mkpart ESP fat32 1MiB 513MiB (parted) set 1 boot on 根目录
+(parted) mkpart primary ext4 513MiB 20.5GiB home目录
+(parted) mkpart primary ext4 20.5GiB 100% parted默认是开启了区块对齐的，可以提高硬盘的读写速度。 如果分区大小不能对齐，parted会显示一下信息。
+(parted) mkpart primary fat16 0 32M Warning: The resulting partition is not properly aligned for best performance.</description></item></channel></rss>
